@@ -1,0 +1,84 @@
+---
+- hosts: Webserver-With-Monitoring
+  become: true
+  vars:
+    project_name: urlshortener
+    project_repo: https://github.com/ianshulx/Django-Projects-for-beginners.git
+    system_packages:
+      - python3
+      - python3-pip
+      - python3-venv
+      - git
+      - nginx
+      - gunicorn
+
+  tasks:
+    - name: Update system packages
+      apt:
+        update_cache: true
+        upgrade: dist
+
+    - name: Install system dependencies
+      apt:
+        name: "{{ system_packages }}"
+        state: present
+
+    - name: Create project directory
+      file:
+        path: "/opt/{{ project_name }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '600'
+
+    - name: Clone Django URL Shortener project
+      git:
+        repo: "{{ project_repo }}"
+        dest: "/opt/{{ project_name }}"
+        version: main
+        depth: 1
+        force: true
+
+    - name: Create Python virtual environment
+      command: python3 -m venv "/opt/{{ project_name }}/venv"
+      args:
+        creates: "/opt/{{ project_name }}/venv"
+
+    - name: Install Python dependencies
+      pip:
+        name:
+          - pip==21.3.1
+          - virtualenv==20.10.0
+          - gunicorn==20.1.0
+          - django==3.2.9
+        state: present
+        virtualenv: "/opt/{{ project_name }}/venv"
+
+    - name: Install project requirements
+      pip:
+        requirements: "/opt/{{ project_name }}/URL Shortener/requirements.txt"
+        virtualenv: "/opt/{{ project_name }}/venv"
+
+    - name: Configure Gunicorn service
+      template:
+        src: gunicorn.service.j2
+        dest: /etc/systemd/system/gunicorn.service
+        mode: '0644'
+      notify: Restart Gunicorn
+
+    - name: Ensure Gunicorn is running
+      systemd:
+        name: gunicorn
+        enabled: true
+        state: started
+
+  handlers:
+    - name: Restart Gunicorn
+      systemd:
+        name: gunicorn
+        state: restarted
+
+    - name: Restart Nginx
+      systemd:
+        name: nginx
+        state: restarted
