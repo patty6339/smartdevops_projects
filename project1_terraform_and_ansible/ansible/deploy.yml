@@ -6,8 +6,8 @@
     project_repo: https://github.com/ianshulx/Django-Projects-for-beginners.git
     system_packages:
       - python3
-      - python3-pip
       - python3-venv
+      - python3-pip
       - git
       - nginx
       - gunicorn
@@ -23,6 +23,27 @@
         name: "{{ system_packages }}"
         state: present
 
+    - name: Install virtualenv
+      apt:
+        name: python3-venv
+        state: present
+
+    - name: Create Python virtual environment
+      command: python3 -m venv /opt/{{ project_name }}/venv
+      args:
+        creates: /opt/{{ project_name }}/venv
+    
+    - name: Activate virtual environment and install pip
+      command: /opt/{{ project_name }}/venv/bin/python -m ensurepip
+    
+    - name: Upgrade pip
+      command: /opt/{{ project_name }}/venv/bin/pip install --upgrade pip
+    
+    - name: Install Python dependencies for project
+      command: /opt/{{ project_name }}/venv/bin/pip install -r /opt/{{ project_name }}/URL\ Shortener/requirements.txt
+    - name: Install required python packages inside virtual environment
+      command: "/opt/{{ project_name }}/venv/bin/pip install ansible six"
+
     - name: Create project directory
       file:
         path: "/opt/{{ project_name }}"
@@ -31,6 +52,11 @@
         group: ubuntu
         mode: '600'
 
+    - name: Remove existing project directory if it exists
+      file:
+        path: "/opt/{{ project_name }}"
+        state: absent
+
     - name: Clone Django URL Shortener project
       git:
         repo: "{{ project_repo }}"
@@ -38,26 +64,6 @@
         version: main
         depth: 1
         force: true
-
-    - name: Create Python virtual environment
-      command: python3 -m venv "/opt/{{ project_name }}/venv"
-      args:
-        creates: "/opt/{{ project_name }}/venv"
-
-    - name: Install Python dependencies
-      pip:
-        name:
-          - pip==21.3.1
-          - virtualenv==20.10.0
-          - gunicorn==20.1.0
-          - django==3.2.9
-        state: present
-        virtualenv: "/opt/{{ project_name }}/venv"
-
-    - name: Install project requirements
-      pip:
-        requirements: "/opt/{{ project_name }}/URL Shortener/requirements.txt"
-        virtualenv: "/opt/{{ project_name }}/venv"
 
     - name: Configure Gunicorn service
       template:
