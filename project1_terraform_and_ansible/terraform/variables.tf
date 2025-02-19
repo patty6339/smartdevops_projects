@@ -1,6 +1,7 @@
 variable "key_pair" {
   description = "EC2 Key Pair for SSH access"
   type        = string
+  default     = "forsmartdevops"
 }
 
 variable "instance_type" {
