@@ -3,7 +3,7 @@
   become: true
   vars:
     project_name: urlshortener
-    project_repo: https://github.com/ianshulx/Django-Projects-for-beginners.git
+    project_repo: https://github.com/ianshulx/url-shortener.git
     system_packages:
       - python3
       - python3-venv
