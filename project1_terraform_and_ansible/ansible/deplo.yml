@@ -1,0 +1,83 @@
+
+---
+- hosts: Webserver-With-Monitoring
+  become: true
+  vars:
+    project_name: urlshortener
+    project_repo: https://github.com/ianshulx/url-shortener.git
+    system_packages:
+      - python3
+      - python3-venv
+      - python3-pip
+      - git
+      - nginx
+      - gunicorn
+
+  tasks:
+    - name: Update system packages
+      apt:
+        update_cache: true
+        upgrade: dist
+
+    - name: Install system dependencies
+      apt:
+        name: "{{ system_packages }}"
+        state: present
+
+    - name: Create a virtual environment
+      command: python3 -m venv /opt/{{ project_name }}/venv
+
+    - name: Install required Python packages in virtual environment
+      command: /opt/{{ project_name }}/venv/bin/pip install ansible six
+
+    - name: Ensure project directory exists
+      file:
+        path: "/opt/{{ project_name }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '600'
+
+    - name: Clone Django URL Shortener project
+      git:
+        repo: "{{ project_repo }}"
+        dest: "/opt/{{ project_name }}"
+        version: main
+        depth: 1
+        force: true
+
+    - name: Install Python dependencies for project
+      pip:
+        requirements: "/opt/{{ project_name }}/URL Shortener/requirements.txt"
+        virtualenv: "/opt/{{ project_name }}/venv"
+
+    - name: Install required python packages inside virtual environment
+      pip:
+        name:
+          - ansible
+          - six
+        virtualenv: "/opt/{{ project_name }}/venv"
+
+    - name: Configure Gunicorn service
+      template:
+        src: gunicorn.service.j2
+        dest: /etc/systemd/system/gunicorn.service
+        mode: '0644'
+      notify: Restart Gunicorn
+
+    - name: Ensure Gunicorn is running
+      systemd:
+        name: gunicorn
+        enabled: true
+        state: started
+
+  handlers:
+    - name: Restart Gunicorn
+      systemd:
+        name: gunicorn
+        state: restarted
+
+    - name: Restart Nginx
+      systemd:
+        name: nginx
+        state: restarted
